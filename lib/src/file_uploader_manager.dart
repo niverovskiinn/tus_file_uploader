@@ -16,6 +16,7 @@ class TusFileUploaderManager {
     UploadingCompleteCallback? completeCallback,
     UploadingFailedCallback? failureCallback,
     Map<String, String> headers = const {},
+    bool failOnLostConnection = false,
   }) async {
     final xFile = XFile(localFilePath);
     TusFileUploader? uploader = _cache[localFilePath];
@@ -33,7 +34,7 @@ class TusFileUploaderManager {
         path: localFilePath,
         baseUrl: Uri.parse(baseUrl),
         headers: resultHeaders,
-        failOnLostConnection: false,
+        failOnLostConnection: failOnLostConnection,
         progressCallback: progressCallback,
         completeCallback: (filePath, uploadUrl) async {
           completeCallback?.call(filePath, uploadUrl);
