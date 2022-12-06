@@ -90,9 +90,9 @@ class TusFileUploader {
       }
       return;
     } on http.ClientException catch (_) {
-      final uploadUrl = await setup();
-      if (uploadUrl != null) {
-        await upload(headers: headers);
+      // Lost internet connection
+      if (failOnLostConnection) {
+        failureCallback?.call(_file.path, e.toString());
       }
       return;
     } on SocketException catch (e) {
