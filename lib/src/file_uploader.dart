@@ -14,8 +14,8 @@ class TusFileUploader {
   late int _currentChunkSize;
   final _client = http.Client();
 
+  Uri? _uploadUrl;
   late XFile _file;
-  late Uri _uploadUrl;
   late int _optimalChunkSendTime;
   CancelableOperation? _currentOperation;
 
@@ -28,23 +28,71 @@ class TusFileUploader {
 
   bool uploadingIsPaused = false;
 
-  TusFileUploader({
+  TusFileUploader._({
     required String path,
     required this.baseUrl,
+    required this.headers,
+    required this.failOnLostConnection,
     this.progressCallback,
     this.completeCallback,
     this.failureCallback,
-    this.headers = const {},
-    this.failOnLostConnection = false,
     int? optimalChunkSendTime,
+    Uri? uploadUrl,
   }) {
     _file = XFile(path);
+    _uploadUrl = _uploadUrl;
     _currentChunkSize = _defaultChunkSize;
     _optimalChunkSendTime = optimalChunkSendTime ?? 1000; // 1 SEC
   }
 
-  Future<String?> setup() async {
-    String? uploadUrl;
+  factory TusFileUploader.init({
+    required String path,
+    required Uri baseUrl,
+    UploadingProgressCallback? progressCallback,
+    UploadingCompleteCallback? completeCallback,
+    UploadingFailedCallback? failureCallback,
+    Map<String, String>? headers,
+    bool? failOnLostConnection,
+    int? optimalChunkSendTime,
+  }) =>
+      TusFileUploader._(
+        path: path,
+        baseUrl: baseUrl,
+        progressCallback: progressCallback,
+        completeCallback: completeCallback,
+        failureCallback: failureCallback,
+        headers: headers ?? const {},
+        failOnLostConnection: failOnLostConnection ?? false,
+        optimalChunkSendTime: optimalChunkSendTime,
+      );
+
+  factory TusFileUploader.initAndSetup({
+    required String path,
+    required Uri baseUrl,
+    required Uri uploadUrl,
+    UploadingProgressCallback? progressCallback,
+    UploadingCompleteCallback? completeCallback,
+    UploadingFailedCallback? failureCallback,
+    Map<String, String>? headers,
+    bool? failOnLostConnection,
+    int? optimalChunkSendTime,
+  }) =>
+      TusFileUploader._(
+        path: path,
+        baseUrl: baseUrl,
+        progressCallback: progressCallback,
+        completeCallback: completeCallback,
+        failureCallback: failureCallback,
+        headers: headers ?? const {},
+        failOnLostConnection: failOnLostConnection ?? false,
+        optimalChunkSendTime: optimalChunkSendTime,
+        uploadUrl: uploadUrl,
+      );
+
+  Future<String?> setupUploadUrl() async {
+    if (_uploadUrl != null) {
+      return _uploadUrl!.toString();
+    }
     try {
       _currentOperation = CancelableOperation.fromFuture(
         _client.setupUploadUrl(
@@ -53,7 +101,7 @@ class TusFileUploader {
         ),
       );
       _uploadUrl = await _currentOperation!.value;
-      return uploadUrl.toString();
+      return _uploadUrl.toString();
     } catch (e) {
       failureCallback?.call(_file.path, e.toString());
       return null;
@@ -71,9 +119,13 @@ class TusFileUploader {
   }) async {
     uploadingIsPaused = false;
     try {
+      final resultUrl = _uploadUrl;
+      if (resultUrl == null) {
+        throw UnimplementedError('The upload url is missing');
+      }
       _currentOperation = CancelableOperation.fromFuture(
         _client.getCurrentOffset(
-          _uploadUrl,
+          resultUrl,
           headers: headers,
         ),
       );
@@ -84,7 +136,7 @@ class TusFileUploader {
         totalBytes: totalBytes,
       );
     } on MissingUploadOffsetException catch (_) {
-      final uploadUrl = await setup();
+      final uploadUrl = await setupUploadUrl();
       if (uploadUrl != null) {
         await upload(headers: headers);
       }
@@ -111,13 +163,17 @@ class TusFileUploader {
     required int offset,
     required int totalBytes,
   }) async {
+    final resultUrl = _uploadUrl;
+    if (resultUrl == null) {
+      throw UnimplementedError('The upload url is missing');
+    }
     final byteBuilder = await _file.getData(_currentChunkSize, offset: offset);
     final bytesRead = min(_currentChunkSize, byteBuilder.length);
     final nextChunk = byteBuilder.takeBytes();
     final startTime = DateTime.now();
     _currentOperation = CancelableOperation.fromFuture(
       _client.uploadNextChunkOfFile(
-        uploadUrl: _uploadUrl,
+        uploadUrl: resultUrl,
         nextChunk: nextChunk,
         headers: {
           "Tus-Resumable": tusVersion,

@@ -30,7 +30,7 @@ class TusFileUploaderManager {
           "Upload-Metadata": uploadMetadata,
           "Upload-Length": "$totalBytes",
         });
-      uploader = TusFileUploader(
+      uploader = TusFileUploader.init(
         path: localFilePath,
         baseUrl: Uri.parse(baseUrl),
         headers: resultHeaders,
@@ -46,7 +46,7 @@ class TusFileUploaderManager {
         },
       );
       _cache[localFilePath] = uploader;
-      uploadUrl = await uploader.setup();
+      uploadUrl = await uploader.setupUploadUrl();
     }
     if (uploadUrl != null) {
       await uploader.upload(
