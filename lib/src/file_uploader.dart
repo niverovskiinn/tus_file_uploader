@@ -197,6 +197,7 @@ class TusFileUploader {
     progressCallback?.call(_file.path, nextOffset / totalBytes);
     if (offset == totalBytes) {
       completeCallback?.call(_file.path, _uploadUrl.toString());
+      return;
     }
     if (uploadingIsPaused) {
       return;

@@ -1,3 +1,7 @@
+## 0.0.4
+
+Fixed exiting from upload process after the process is finished.
+
 ## 0.0.3
 
 Fixed initializing upload url inside setup method.
