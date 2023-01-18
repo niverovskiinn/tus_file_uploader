@@ -1,3 +1,7 @@
+## 0.0.6
+
+Fixed setting upload url.
+
 ## 0.0.5
 
 Added an ability to set timeout for a single http connection.

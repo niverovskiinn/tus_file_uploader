@@ -40,7 +40,7 @@ class TusFileUploader {
     int? timeout,
   }) {
     _file = XFile(path);
-    _uploadUrl = _uploadUrl;
+    _uploadUrl = uploadUrl;
     _currentChunkSize = _defaultChunkSize;
     _optimalChunkSendTime = optimalChunkSendTime ?? 1000; // 1 SEC
     _client.connectionTimeout = Duration(seconds: timeout ?? 3);
