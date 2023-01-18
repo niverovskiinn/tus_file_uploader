@@ -1,3 +1,7 @@
+## 0.0.7
+
+Optimized cancelable operations.
+
 ## 0.0.6
 
 Fixed setting upload url.

@@ -123,47 +123,46 @@ class TusFileUploader {
     Map<String, String> headers = const {},
   }) async {
     uploadingIsPaused = false;
-    try {
-      final resultUrl = _uploadUrl;
-      if (resultUrl == null) {
-        throw UnimplementedError('The upload url is missing');
-      }
-      _currentOperation = CancelableOperation.fromFuture(
-        _client.getCurrentOffset(
+    _currentOperation = CancelableOperation.fromFuture(() async {
+      try {
+        final resultUrl = _uploadUrl;
+        if (resultUrl == null) {
+          throw UnimplementedError('The upload url is missing');
+        }
+        final offset = await _client.getCurrentOffset(
           resultUrl,
           headers: headers,
-        ),
-      );
-      final offset = await _currentOperation!.value;
-      final totalBytes = await _file.length();
-      await _uploadNextChunk(
-        offset: offset,
-        totalBytes: totalBytes,
-      );
-    } on MissingUploadOffsetException catch (_) {
-      final uploadUrl = await setupUploadUrl();
-      if (uploadUrl != null) {
-        await upload(headers: headers);
+        );
+        final totalBytes = await _file.length();
+        await _uploadNextChunk(
+          offset: offset,
+          totalBytes: totalBytes,
+        );
+      } on MissingUploadOffsetException catch (_) {
+        final uploadUrl = await setupUploadUrl();
+        if (uploadUrl != null) {
+          await upload(headers: headers);
+        }
+        return;
       }
-      return;
-    }
-    on HttpException catch (_) {
-      // Lost internet connection
-      if (failOnLostConnection) {
+      on HttpException catch (_) {
+        // Lost internet connection
+        if (failOnLostConnection) {
+          failureCallback?.call(_file.path, e.toString());
+        }
+        return;
+      }
+      on SocketException catch (e) {
+        // Lost internet connection
+        if (failOnLostConnection) {
+          failureCallback?.call(_file.path, e.toString());
+        }
+        return;
+      } catch (e) {
         failureCallback?.call(_file.path, e.toString());
+        return;
       }
-      return;
-    }
-    on SocketException catch (e) {
-      // Lost internet connection
-      if (failOnLostConnection) {
-        failureCallback?.call(_file.path, e.toString());
-      }
-      return;
-    } catch (e) {
-      failureCallback?.call(_file.path, e.toString());
-      return;
-    }
+    }.call());
   }
 
   Future<void> _uploadNextChunk({
@@ -178,18 +177,15 @@ class TusFileUploader {
     final bytesRead = min(_currentChunkSize, byteBuilder.length);
     final nextChunk = byteBuilder.takeBytes();
     final startTime = DateTime.now();
-    _currentOperation = CancelableOperation.fromFuture(
-      _client.uploadNextChunkOfFile(
-        uploadUrl: resultUrl,
-        nextChunk: nextChunk,
-        headers: {
-          "Tus-Resumable": tusVersion,
-          "Upload-Offset": "$offset",
-          "Content-Type": "application/offset+octet-stream"
-        },
-      ),
+    final serverOffset = await _client.uploadNextChunkOfFile(
+      uploadUrl: resultUrl,
+      nextChunk: nextChunk,
+      headers: {
+        "Tus-Resumable": tusVersion,
+        "Upload-Offset": "$offset",
+        "Content-Type": "application/offset+octet-stream"
+      },
     );
-    final serverOffset = await _currentOperation!.value;
     final endTime = DateTime.now();
     final diff = endTime.difference(startTime);
     _currentChunkSize = (_currentChunkSize * (_optimalChunkSendTime / diff.inMilliseconds)).toInt();
