@@ -6,9 +6,13 @@ import 'package:cross_file/cross_file.dart' show XFile;
 
 class TusFileUploaderManager {
   final String baseUrl;
+  final int? timeout;
   final _cache = <String, TusFileUploader>{};
 
-  TusFileUploaderManager(this.baseUrl);
+  TusFileUploaderManager(
+    this.baseUrl, {
+    this.timeout,
+  });
 
   Future<void> uploadFile({
     required String localFilePath,
@@ -34,6 +38,7 @@ class TusFileUploaderManager {
         path: localFilePath,
         baseUrl: Uri.parse(baseUrl),
         headers: resultHeaders,
+        timeout: timeout,
         failOnLostConnection: failOnLostConnection,
         progressCallback: progressCallback,
         completeCallback: (filePath, uploadUrl) async {

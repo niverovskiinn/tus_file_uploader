@@ -2,7 +2,6 @@ import 'dart:io';
 import 'dart:math';
 import 'package:async/async.dart';
 
-import 'package:http/http.dart' as http;
 import 'package:cross_file/cross_file.dart' show XFile;
 
 import 'utils.dart';
@@ -12,7 +11,7 @@ import 'extensions.dart';
 class TusFileUploader {
   static const _defaultChunkSize = 128 * 1024; // 128 KB
   late int _currentChunkSize;
-  final _client = http.Client();
+  final _client = HttpClient();
 
   Uri? _uploadUrl;
   late XFile _file;
@@ -38,11 +37,13 @@ class TusFileUploader {
     this.failureCallback,
     int? optimalChunkSendTime,
     Uri? uploadUrl,
+    int? timeout,
   }) {
     _file = XFile(path);
     _uploadUrl = _uploadUrl;
     _currentChunkSize = _defaultChunkSize;
     _optimalChunkSendTime = optimalChunkSendTime ?? 1000; // 1 SEC
+    _client.connectionTimeout = Duration(seconds: timeout ?? 3);
   }
 
   factory TusFileUploader.init({
@@ -54,6 +55,7 @@ class TusFileUploader {
     Map<String, String>? headers,
     bool? failOnLostConnection,
     int? optimalChunkSendTime,
+    int? timeout,
   }) =>
       TusFileUploader._(
         path: path,
@@ -64,6 +66,7 @@ class TusFileUploader {
         headers: headers ?? const {},
         failOnLostConnection: failOnLostConnection ?? false,
         optimalChunkSendTime: optimalChunkSendTime,
+        timeout: timeout,
       );
 
   factory TusFileUploader.initAndSetup({
@@ -76,6 +79,7 @@ class TusFileUploader {
     Map<String, String>? headers,
     bool? failOnLostConnection,
     int? optimalChunkSendTime,
+    int? timeout,
   }) =>
       TusFileUploader._(
         path: path,
@@ -87,6 +91,7 @@ class TusFileUploader {
         failOnLostConnection: failOnLostConnection ?? false,
         optimalChunkSendTime: optimalChunkSendTime,
         uploadUrl: uploadUrl,
+        timeout: timeout,
       );
 
   Future<String?> setupUploadUrl() async {
@@ -141,13 +146,15 @@ class TusFileUploader {
         await upload(headers: headers);
       }
       return;
-    } on http.ClientException catch (_) {
+    }
+    on HttpException catch (_) {
       // Lost internet connection
       if (failOnLostConnection) {
         failureCallback?.call(_file.path, e.toString());
       }
       return;
-    } on SocketException catch (e) {
+    }
+    on SocketException catch (e) {
       // Lost internet connection
       if (failOnLostConnection) {
         failureCallback?.call(_file.path, e.toString());

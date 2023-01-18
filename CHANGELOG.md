@@ -1,3 +1,7 @@
+## 0.0.5
+
+Added an ability to set timeout for a single http connection.
+
 ## 0.0.4
 
 Fixed exiting from upload process after the process is finished.
