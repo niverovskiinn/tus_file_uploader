@@ -131,7 +131,10 @@ class TusFileUploader {
         }
         final offset = await _client.getCurrentOffset(
           resultUrl,
-          headers: headers,
+          headers: Map.from(headers)
+            ..addAll({
+              "Tus-Resumable": tusVersion,
+            }),
         );
         final totalBytes = await _file.length();
         await _uploadNextChunk(
@@ -144,15 +147,13 @@ class TusFileUploader {
           await upload(headers: headers);
         }
         return;
-      }
-      on HttpException catch (_) {
+      } on HttpException catch (_) {
         // Lost internet connection
         if (failOnLostConnection) {
           failureCallback?.call(_file.path, e.toString());
         }
         return;
-      }
-      on SocketException catch (e) {
+      } on SocketException catch (e) {
         // Lost internet connection
         if (failOnLostConnection) {
           failureCallback?.call(_file.path, e.toString());
@@ -163,6 +164,7 @@ class TusFileUploader {
         return;
       }
     }.call());
+    await _currentOperation!.value;
   }
 
   Future<void> _uploadNextChunk({
@@ -196,7 +198,6 @@ class TusFileUploader {
             "response contains different Upload-Offset value ($serverOffset) than expected ($offset)",
       );
     }
-
     progressCallback?.call(_file.path, nextOffset / totalBytes);
     if (offset == totalBytes) {
       completeCallback?.call(_file.path, _uploadUrl.toString());

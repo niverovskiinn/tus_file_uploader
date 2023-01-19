@@ -1,3 +1,7 @@
+## 0.0.8
+
+Updated request for getting current offset
+
 ## 0.0.7
 
 Optimized cancelable operations.

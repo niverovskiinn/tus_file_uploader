@@ -35,7 +35,6 @@ extension HttpClientUtils on HttpClient {
     Map<String, String>? headers,
   }) async {
     final request = await headUrl(uploadUrl);
-    request.headers.set(tusVersion, "Tus-Resumable");
     headers?.forEach((key, value) {
       request.headers.set(key, value);
     });
