@@ -199,7 +199,7 @@ class TusFileUploader {
       );
     }
     progressCallback?.call(_file.path, nextOffset / totalBytes);
-    if (offset == totalBytes) {
+    if (nextOffset >= totalBytes) {
       completeCallback?.call(_file.path, _uploadUrl.toString());
       return;
     }

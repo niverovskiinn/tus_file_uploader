@@ -1,3 +1,7 @@
+## 0.0.9
+
+Fixed sending the last chunk of data.
+
 ## 0.0.8
 
 Updated request for getting current offset
