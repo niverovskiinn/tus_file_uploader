@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:collection/collection.dart';
+import 'package:http/http.dart' as http;
+import 'dart:typed_data' show BytesBuilder;
 import 'dart:typed_data' show Uint8List;
 
 import 'package:cross_file/cross_file.dart' show XFile;
@@ -9,21 +10,16 @@ import "package:path/path.dart" as p;
 import 'utils.dart';
 import 'exceptions.dart';
 
-extension HttpClientUtils on HttpClient {
+extension HttpUtils on http.Client {
   Future<Uri> setupUploadUrl({
     required Uri baseUrl,
     Map<String, String> headers = const {},
   }) async {
-    final request = await postUrl(baseUrl);
-    headers.forEach((key, value) {
-      request.headers.set(key, value);
-    });
-    final response = await request.close();
+    final response = await post(baseUrl, headers: headers);
     if (!(response.statusCode >= 200 && response.statusCode < 300) && response.statusCode != 404) {
       throw ProtocolException(response.statusCode);
     }
-    final list = response.headers["location"];
-    final urlStr = list?.firstOrNull ?? "";
+    final urlStr = response.headers["location"] ?? "";
     if (urlStr.isEmpty) {
       throw MissingUploadUriException();
     }
@@ -34,16 +30,19 @@ extension HttpClientUtils on HttpClient {
     Uri uploadUrl, {
     Map<String, String>? headers,
   }) async {
-    final request = await headUrl(uploadUrl);
-    headers?.forEach((key, value) {
-      request.headers.set(key, value);
-    });
-    final response = await request.close();
+    final offsetHeaders = Map<String, String>.from(headers ?? {})
+      ..addAll({
+        "Tus-Resumable": tusVersion,
+      });
+    final response = await head(
+      uploadUrl,
+      headers: offsetHeaders,
+    );
+
     if (!(response.statusCode >= 200 && response.statusCode < 300)) {
       throw ProtocolException(response.statusCode);
     }
-    final list = response.headers["upload-offset"];
-    final serverOffset = list?.firstOrNull?.parseOffset();
+    final serverOffset = response.headers["upload-offset"]?.parseOffset();
     if (serverOffset == null) {
       throw MissingUploadOffsetException();
     }
@@ -55,19 +54,15 @@ extension HttpClientUtils on HttpClient {
     required Uint8List nextChunk,
     Map<String, String> headers = const {},
   }) async {
-    final request = await patchUrl(uploadUrl);
-    headers.forEach((key, value) {
-      request.headers.set(key, value);
-    });
-    request.add(nextChunk);
-    final response = await request.close();
-
+    final response = await patch(
+      uploadUrl,
+      body: nextChunk,
+      headers: headers,
+    );
     if (!(response.statusCode >= 200 && response.statusCode < 300)) {
       throw ProtocolException(response.statusCode);
     }
-
-    final list = response.headers["upload-offset"];
-    final serverOffset = list?.firstOrNull?.parseOffset();
+    final serverOffset = response.headers["upload-offset"]?.parseOffset();
     if (serverOffset == null) {
       throw ChunkUploadFailedException();
     }

@@ -1,6 +1,5 @@
-
 const tusVersion = "1.0.0";
 
-typedef UploadingProgressCallback = void Function(String filePath, double progress);
-typedef UploadingCompleteCallback = void Function(String filePath, String uploadUrl);
-typedef UploadingFailedCallback = void Function(String filePath, String message);
+typedef UploadingProgressCallback = Future<void> Function(String filePath, double progress);
+typedef UploadingCompleteCallback = Future<void> Function(String filePath, String uploadUrl);
+typedef UploadingFailedCallback = Future<void> Function(String filePath, String message);

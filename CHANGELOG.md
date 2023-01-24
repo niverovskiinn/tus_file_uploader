@@ -1,3 +1,7 @@
+## 0.0.10
+
+Moved from dart:io to http as the package for network requests.
+
 ## 0.0.9
 
 Fixed sending the last chunk of data.

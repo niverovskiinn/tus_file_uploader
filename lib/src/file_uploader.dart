@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:async/async.dart';
 
 import 'package:cross_file/cross_file.dart' show XFile;
+import 'package:http/http.dart' as http;
 
 import 'utils.dart';
 import 'exceptions.dart';
@@ -11,10 +12,11 @@ import 'extensions.dart';
 class TusFileUploader {
   static const _defaultChunkSize = 128 * 1024; // 128 KB
   late int _currentChunkSize;
-  final _client = HttpClient();
+  final _client = http.Client();
 
   Uri? _uploadUrl;
   late XFile _file;
+  late Duration _timeout;
   late int _optimalChunkSendTime;
   CancelableOperation? _currentOperation;
 
@@ -42,8 +44,8 @@ class TusFileUploader {
     _file = XFile(path);
     _uploadUrl = uploadUrl;
     _currentChunkSize = _defaultChunkSize;
+    _timeout = Duration(seconds: timeout ?? 3); // 3 SEC
     _optimalChunkSendTime = optimalChunkSendTime ?? 1000; // 1 SEC
-    _client.connectionTimeout = Duration(seconds: timeout ?? 3);
   }
 
   factory TusFileUploader.init({
@@ -100,15 +102,20 @@ class TusFileUploader {
     }
     try {
       _currentOperation = CancelableOperation.fromFuture(
-        _client.setupUploadUrl(
-          baseUrl: baseUrl,
-          headers: headers,
-        ),
+        _client
+            .setupUploadUrl(
+              baseUrl: baseUrl,
+              headers: headers,
+            )
+            .timeout(
+              _timeout,
+              onTimeout: () => baseUrl,
+            ),
       );
       _uploadUrl = await _currentOperation!.value;
       return _uploadUrl.toString();
     } catch (e) {
-      failureCallback?.call(_file.path, e.toString());
+      await failureCallback?.call(_file.path, e.toString());
       return null;
     }
   }
@@ -129,13 +136,18 @@ class TusFileUploader {
         if (resultUrl == null) {
           throw UnimplementedError('The upload url is missing');
         }
-        final offset = await _client.getCurrentOffset(
-          resultUrl,
-          headers: Map.from(headers)
-            ..addAll({
-              "Tus-Resumable": tusVersion,
-            }),
-        );
+        final offset = await _client
+            .getCurrentOffset(
+              resultUrl,
+              headers: Map.from(headers)
+                ..addAll({
+                  "Tus-Resumable": tusVersion,
+                }),
+            )
+            .timeout(
+              _timeout,
+              onTimeout: () => 0,
+            );
         final totalBytes = await _file.length();
         await _uploadNextChunk(
           offset: offset,
@@ -150,17 +162,17 @@ class TusFileUploader {
       } on HttpException catch (_) {
         // Lost internet connection
         if (failOnLostConnection) {
-          failureCallback?.call(_file.path, e.toString());
+          await failureCallback?.call(_file.path, e.toString());
         }
         return;
       } on SocketException catch (e) {
         // Lost internet connection
         if (failOnLostConnection) {
-          failureCallback?.call(_file.path, e.toString());
+          await failureCallback?.call(_file.path, e.toString());
         }
         return;
       } catch (e) {
-        failureCallback?.call(_file.path, e.toString());
+        await failureCallback?.call(_file.path, e.toString());
         return;
       }
     }.call());
@@ -187,6 +199,9 @@ class TusFileUploader {
         "Upload-Offset": "$offset",
         "Content-Type": "application/offset+octet-stream"
       },
+    ).timeout(
+      _timeout,
+      onTimeout: () => offset,
     );
     final endTime = DateTime.now();
     final diff = endTime.difference(startTime);
@@ -198,9 +213,9 @@ class TusFileUploader {
             "response contains different Upload-Offset value ($serverOffset) than expected ($offset)",
       );
     }
-    progressCallback?.call(_file.path, nextOffset / totalBytes);
+    await progressCallback?.call(_file.path, nextOffset / totalBytes);
     if (nextOffset >= totalBytes) {
-      completeCallback?.call(_file.path, _uploadUrl.toString());
+      await completeCallback?.call(_file.path, _uploadUrl.toString());
       return;
     }
     if (uploadingIsPaused) {

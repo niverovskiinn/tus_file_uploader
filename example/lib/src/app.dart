@@ -76,7 +76,7 @@ class _AppState extends State<App> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: files.keys.fold(
               [],
-                  (res, next) => [
+              (res, next) => [
                 ...res,
                 const SizedBox(height: 16),
                 ImageTile(next, progress: files[next]),
@@ -86,14 +86,14 @@ class _AppState extends State<App> {
         ),
         bottomNavigationBar: files.values.where((e) => e == 0).isNotEmpty
             ? SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: ElevatedButton(
-              onPressed: uploadAll,
-              child: const Text('Upload Files'),
-            ),
-          ),
-        )
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: ElevatedButton(
+                    onPressed: uploadAll,
+                    child: const Text('Upload Files'),
+                  ),
+                ),
+              )
             : null,
       ),
     );
@@ -131,19 +131,19 @@ class _AppState extends State<App> {
     });
   }
 
-  void onUploadingProgress(String filePath, double progress) {
+  Future<void> onUploadingProgress(String filePath, double progress) async {
     setState(() {
       files[filePath] = progress;
     });
   }
 
-  void onUploadingComplete(String filePath, String url) {
+  Future<void> onUploadingComplete(String filePath, String url) async {
     setState(() {
       updateUploadingStatus();
     });
   }
 
-  void onUploadingFailed(String filePath, String message) {
+  Future<void> onUploadingFailed(String filePath, String message) async {
     setState(() {
       files[filePath] = 0;
       updateUploadingStatus();
