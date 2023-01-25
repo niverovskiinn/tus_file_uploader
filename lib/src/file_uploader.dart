@@ -159,7 +159,7 @@ class TusFileUploader {
           await upload(headers: headers);
         }
         return;
-      } on HttpException catch (_) {
+      } on http.ClientException catch (_) {
         // Lost internet connection
         if (failOnLostConnection) {
           await failureCallback?.call(_file.path, e.toString());

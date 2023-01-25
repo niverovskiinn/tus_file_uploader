@@ -1,3 +1,7 @@
+## 0.0.11
+
+Fixed handling losing internet connection exception.
+
 ## 0.0.10
 
 Moved from dart:io to http as the package for network requests.
