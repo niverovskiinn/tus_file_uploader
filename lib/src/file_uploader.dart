@@ -115,7 +115,7 @@ class TusFileUploader {
       _uploadUrl = await _currentOperation!.value;
       return _uploadUrl.toString();
     } catch (e) {
-      await failureCallback?.call(_file.path, e.toString());
+      await failureCallback?.call(_file.path, e);
       return null;
     }
   }
@@ -159,20 +159,20 @@ class TusFileUploader {
           await upload(headers: headers);
         }
         return;
-      } on http.ClientException catch (_) {
+      } on http.ClientException catch (e) {
         // Lost internet connection
         if (failOnLostConnection) {
-          await failureCallback?.call(_file.path, e.toString());
+          await failureCallback?.call(_file.path, e);
         }
         return;
       } on SocketException catch (e) {
         // Lost internet connection
         if (failOnLostConnection) {
-          await failureCallback?.call(_file.path, e.toString());
+          await failureCallback?.call(_file.path, e);
         }
         return;
       } catch (e) {
-        await failureCallback?.call(_file.path, e.toString());
+        await failureCallback?.call(_file.path, e);
         return;
       }
     }.call());
@@ -205,7 +205,9 @@ class TusFileUploader {
     );
     final endTime = DateTime.now();
     final diff = endTime.difference(startTime);
-    _currentChunkSize = (_currentChunkSize * (_optimalChunkSendTime / diff.inMilliseconds)).toInt();
+    _currentChunkSize =
+        (_currentChunkSize * (_optimalChunkSendTime / diff.inMilliseconds))
+            .toInt();
     final nextOffset = offset + bytesRead;
     if (nextOffset != serverOffset) {
       throw MissingUploadOffsetException(

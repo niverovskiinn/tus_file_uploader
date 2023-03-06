@@ -14,7 +14,8 @@ class App extends StatefulWidget {
 
 class _AppState extends State<App> {
   final files = <String, double>{};
-  final uploadingManager = TusFileUploaderManager('https://master.tus.io/files/');
+  final uploadingManager =
+      TusFileUploaderManager('https://master.tus.io/files/');
 
   UploadingState uploadingState = UploadingState.notStarted;
 
@@ -143,7 +144,7 @@ class _AppState extends State<App> {
     });
   }
 
-  Future<void> onUploadingFailed(String filePath, String message) async {
+  Future<void> onUploadingFailed(String filePath, Object e) async {
     setState(() {
       files[filePath] = 0;
       updateUploadingStatus();
